@@ -462,7 +462,8 @@ ${$('q_by').value||$('s_name').value}`;
 
 // ---------- init ----------
 (function init(){
-  const today=new Date().toISOString().slice(0,10);
+  const d=new Date();
+  const today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   $('q_date').value=today;
   document.querySelectorAll('.form input,.form textarea').forEach(el=>{
     el.addEventListener('input',render); el.addEventListener('change',render);
