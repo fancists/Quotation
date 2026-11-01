@@ -111,11 +111,21 @@ table.d-items th.c,table.d-items td.c{text-align:center;width:44px}
 table.d-items td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 table.d-items td .sub{font-size:11px;color:#55676d;margin-top:3px;white-space:pre-line;line-height:1.4}
 table.d-items tbody tr:last-child td{border-bottom:2px solid var(--accent)}
-table.d-items tr.topt-head td{border-bottom:none;padding-bottom:3px}
-table.d-items tr.topt td{padding-top:4px;padding-bottom:4px;font-size:12.5px;color:#3d5157}
-table.d-items tr.topt td.lbl{padding-left:22px}
+table.d-items tr.topt-head td{border-bottom:none;padding-bottom:4px}
+table.d-items tr.topt td{border-bottom:1px dashed var(--line);padding-top:4px;padding-bottom:4px}
+table.d-items tr.topt.last td{border-bottom:1px solid var(--line);padding-bottom:9px}
 table.d-items tr.topt.on td{background:var(--accent-soft);color:var(--accent-ink);font-weight:700}
-.d-items .vatnote{font-size:10.5px;font-weight:400;color:#7a8c91}
+table.d-items.nocode .cc{display:none}
+@media(max-width:640px){
+  #doc{padding:16px 12px}
+  table.d-items{font-size:12px}
+  table.d-items th{padding:8px 5px;font-size:10.5px}
+  table.d-items td{padding:7px 5px}
+  table.d-items th.c,table.d-items td.c{width:20px}
+  table.d-items th:nth-child(4){width:48px!important}
+  table.d-items th:nth-child(5){width:62px!important}
+  table.d-items th:nth-child(6){width:78px!important}
+}
 .d-pending{margin-top:8px;font-size:12px;font-style:italic;color:#55676d;text-align:right}
 
 .d-foot{display:flex;justify-content:space-between;gap:24px}
@@ -329,7 +339,7 @@ table.d-items tr.topt.on td{background:var(--accent-soft);color:var(--accent-ink
 
       <table class="d-items">
         <thead><tr>
-          <th class="c">#</th><th style="width:68px">รหัส</th><th>รายการ</th>
+          <th class="c">#</th><th class="cc" style="width:68px">รหัส</th><th>รายการ</th>
           <th class="num" style="width:54px">จำนวน</th>
           <th class="num" style="width:88px">ราคา/หน่วย</th>
           <th class="num" style="width:100px">จำนวนเงิน</th>
@@ -573,32 +583,32 @@ function render(){
   $('p_by').textContent= by? by+'\n(ผู้เสนอราคา)' : 'ผู้เสนอราคา';
 
   const t=calc();
-  const vatMul = t.vatOn && !t.incl ? 1.07 : 1;   // แสดงยอดรวม VAT ของแต่ละตัวเลือก
+  const noCode = items.every(it=>!String(it.code||'').trim());   // ไม่มีรายการไหนใส่รหัส: ซ่อนคอลัมน์รหัส ให้ชื่อรายการกว้างขึ้น
   $('p_rows').innerHTML = items.map((it,i)=>{
     const tiers=it.tiers||[];
     const descCell=`${escHtml(it.desc)||'-'}${it.detail?`<div class="sub">${escHtml(it.detail)}</div>`:''}`;
     if(!tiers.length) return `
     <tr><td class="c">${i+1}</td>
-    <td>${escHtml(it.code||'')}</td>
+    <td class="cc">${escHtml(it.code||'')}</td>
     <td>${descCell}</td>
     <td class="num">${(Number(it.qty)||0).toLocaleString('th-TH')}</td>
     <td class="num">${money(it.price)}</td>
     <td class="num">${money(it.qty*it.price)}</td></tr>`;
+    // หนึ่งรายการ หลายราคา: แถวหัวกว้างเต็มตาราง (ชื่อ+รายละเอียดไม่ถูกบีบ) ตามด้วยแถวจำนวน/ราคา บรรทัดเดียวต่อราคา
     return `
     <tr class="topt-head"><td class="c">${i+1}</td>
-    <td>${escHtml(it.code||'')}</td>
-    <td>${descCell}</td>
-    <td></td><td></td><td></td></tr>`
+    <td class="cc">${escHtml(it.code||'')}</td>
+    <td colspan="4">${descCell}</td></tr>`
     + tiers.map((tr,j)=>{
-      const amt=tr.qty*tr.price, on=isSel(it)&&it.sel===j;
+      const on=isSel(it)&&it.sel===j;
       return `
-    <tr class="topt${on?' on':''}"><td></td><td></td>
-    <td class="lbl">ตัวเลือกที่ ${j+1}${on?' ✓ (ที่เลือก)':''}</td>
+    <tr class="topt${j===tiers.length-1?' last':''}${on?' on':''}"><td colspan="${noCode?2:3}"></td>
     <td class="num">${(Number(tr.qty)||0).toLocaleString('th-TH')}</td>
     <td class="num">${money(tr.price)}</td>
-    <td class="num">${money(amt)}${vatMul>1?`<div class="vatnote">รวม VAT ${money(amt*vatMul)}</div>`:''}</td></tr>`;
+    <td class="num">${on?'✓ ':''}${money(tr.qty*tr.price)}</td></tr>`;
     }).join('');
   }).join('');
+  document.querySelector('table.d-items').classList.toggle('nocode', noCode);
 
   $('p_sub').textContent=money(t.sub);
   $('p_disc').textContent='-'+money(t.disc);
@@ -611,7 +621,10 @@ function render(){
   // มีตัวเลือกราคาที่ยังไม่เลือก: ถ้าไม่มีรายการอื่นเลยให้ซ่อนยอดรวม (ยอดแต่ละตัวเลือกดูจากตารางด้านบน)
   const onlyOptions = t.pending>0 && t.sub===0;
   $('p_totalsmain').style.display = onlyOptions ? 'none' : '';
-  $('p_pending').textContent = t.pending>0 && !onlyOptions ? '* ยอดรวมนี้ยังไม่รวมรายการที่ให้เลือกราคา' : '';
+  // ซ่อนยอดรวมอยู่ จึงบอกสถานะ VAT ของราคาในตารางแทน
+  $('p_pending').textContent = t.pending>0 && !onlyOptions ? '* ยอดรวมนี้ยังไม่รวมรายการที่ให้เลือกราคา'
+    : onlyOptions && t.vatOn ? (t.incl ? '* ราคาข้างต้นรวมภาษีมูลค่าเพิ่ม 7% แล้ว' : '* ราคาข้างต้นยังไม่รวมภาษีมูลค่าเพิ่ม 7%')
+    : '';
   const _no=($('q_no').value||'ใบเสนอราคา').trim(), _cu=$('c_name').value.trim();
   document.title = _cu ? (_no+' - '+_cu) : _no;
 }
